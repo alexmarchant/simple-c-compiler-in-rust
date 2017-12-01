@@ -22,7 +22,7 @@ pub enum Expression {
 }
 
 pub fn parse_program(tokens: &Vec<lexer::Token>) -> Result<Program, &str> {
-    let mut p_tokens = tokens.clone();
+    let mut p_tokens = &tokens.clone();
     match parse_function(&mut p_tokens) {
         Ok(function) => {
             return Ok(Program { function: function });
