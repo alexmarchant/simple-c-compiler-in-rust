@@ -16,9 +16,9 @@ fn main() {
 fn lexer_command() {
     let file_name = env::args().nth(2).expect("Missing argument");
     let contents = read_file(file_name);
-    let mut tokens = lexer::parse_tokens(contents);
+    let tokens = lexer::parse_tokens(contents);
     // println!("{:?}", tokens);
-    match parser::parse_program(&mut tokens) {
+    match parser::parse_program(&tokens) {
         Ok(program) => println!("{:?}", program),
         Err(error) => println!("{:?}", error),
     }

@@ -21,13 +21,9 @@ pub enum Expression {
     Constant(i64),
 }
 
-#[derive(Debug)]
-pub enum Error {
-    ParseError,
-}
-
-pub fn parse_program(tokens: &mut Vec<lexer::Token>) -> Result<Program, Error> {
-    match parse_function(tokens) {
+pub fn parse_program(tokens: &Vec<lexer::Token>) -> Result<Program, &str> {
+    let mut p_tokens = tokens.clone();
+    match parse_function(&mut p_tokens) {
         Ok(function) => {
             return Ok(Program { function: function });
         },
@@ -35,7 +31,7 @@ pub fn parse_program(tokens: &mut Vec<lexer::Token>) -> Result<Program, Error> {
     }
 }
 
-pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error> {
+pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, &str> {
     let f_name: String;
     let f_statement: Statement;
 
@@ -43,53 +39,53 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
         Some(token) => {
             match token {
                 lexer::Token::KeywordInt => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Function missing return type"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Function is invalid"),
     }
 
     match tokens.pop() {
         Some(token) => {
             match token {
                 lexer::Token::Identifier(name) => f_name = name,
-                _ => return Err(Error::ParseError),
+                _ => return Err("Missing function name"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Function is invalid"),
     }
 
     match tokens.pop() {
         Some(token) => {
             match token {
                 lexer::Token::OpenParen => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Function missing opening paren"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Function is invalid"),
     }
 
     match tokens.pop() {
         Some(token) => {
             match token {
                 lexer::Token::CloseParen => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Function missing closing paren"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Function is invalid"),
     }
 
     match tokens.pop() {
         Some(token) => {
             match token {
                 lexer::Token::OpenBrace => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Function missing opening brace"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Function is invalid"),
     }
 
-    match parse_statement(tokens) {
+    match parse_statement(&mut tokens) {
         Ok(statement) => f_statement = statement,
         Err(error) => return Err(error),
     }
@@ -98,10 +94,10 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
         Some(token) => {
             match token {
                 lexer::Token::CloseBrace => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Function missing closing brace"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Function is invalid"),
     }
 
     return Ok(Function {
@@ -110,20 +106,20 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     });
 }
 
-pub fn parse_statement(tokens: &mut Vec<lexer::Token>) -> Result<Statement, Error> {
+pub fn parse_statement<'a>(tokens: &'a mut Vec<lexer::Token>) -> Result<Statement, &str> {
     let s_expression: Expression;
 
     match tokens.pop() {
         Some(token) => {
             match token {
                 lexer::Token::KeywordReturn => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Statement is invalid"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Statement is invalid"),
     }
 
-    match parse_expression(tokens) {
+    match parse_expression(&mut tokens) {
         Ok(expression) => s_expression = expression,
         Err(error) => return Err(error),
     }
@@ -132,24 +128,24 @@ pub fn parse_statement(tokens: &mut Vec<lexer::Token>) -> Result<Statement, Erro
         Some(token) => {
             match token {
                 lexer::Token::Semicolon => {},
-                _ => return Err(Error::ParseError),
+                _ => return Err("Statement missing semicolon"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Statement is invalid"),
     }
 
     return Ok(Statement::Return(s_expression));
 }
 
-pub fn parse_expression(tokens: &mut Vec<lexer::Token>) -> Result<Expression, Error> {
+pub fn parse_expression(tokens: &mut Vec<lexer::Token>) -> Result<Expression, &str> {
     match tokens.pop() {
         Some(token) => {
             match token {
                 lexer::Token::IntegerLiteral(value) => return Ok(Expression::Constant(value)),
-                _ => return Err(Error::ParseError),
+                _ => return Err("Expression is invalid"),
             }
         },
-        None => return Err(Error::ParseError),
+        None => return Err("Expression is invalid"),
     }
 }
 
