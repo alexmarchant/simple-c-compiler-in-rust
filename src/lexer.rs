@@ -7,8 +7,8 @@ pub enum Token {
     Semicolon,
     KeywordInt,
     KeywordReturn,
-    IntegerLiteral(i64),
     Identifier(String),
+    IntegerLiteral(i64),
 }
 
 pub fn parse_tokens(contents: String) -> Vec<Token> {
