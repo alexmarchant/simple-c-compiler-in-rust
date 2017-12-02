@@ -39,7 +39,7 @@ fn parse_token_strings(contents: String) -> Vec<String> {
     let mut current_token = String::new();
     for char in contents.chars() { 
         match char {
-            ' ' | '\n' => {
+            ' ' | '\n' | '\t' => {
                 if current_token.len() > 0 {
                     tokens.push(current_token);
                     current_token = String::new();
