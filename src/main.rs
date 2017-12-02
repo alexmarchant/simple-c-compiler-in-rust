@@ -1,5 +1,6 @@
 mod lexer;
 mod parser;
+mod generator;
 
 use std::env;
 use std::io::prelude::*;
@@ -9,9 +10,12 @@ fn main() {
     let file_name = env::args().nth(1).expect("Missing argument");
     let contents = read_file(file_name);
     let tokens = lexer::parse_tokens(contents);
-    // println!("{:?}", tokens);
-    match parser::parse_program(&tokens) {
-        Ok(program) => println!("{:?}", program),
+    let program = parser::parse_program(&tokens);
+    match program {
+        Ok(program) => {
+            let assembly = generator::program_asm(program);
+            println!("{}", assembly);
+        },
         Err(error) => println!("{:?}", error),
     }
 }

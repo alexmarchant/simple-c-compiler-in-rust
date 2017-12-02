@@ -2,13 +2,13 @@ use lexer;
 
 #[derive(Debug)]
 pub struct Program {
-    function: Function,
+    pub function: Function,
 }
 
 #[derive(Debug)]
 pub struct Function {
-    name: String,
-    statement: Statement,
+    pub name: String,
+    pub statement: Statement,
 }
 
 #[derive(Debug)]
