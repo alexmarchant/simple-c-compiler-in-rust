@@ -6,15 +6,7 @@ use std::io::prelude::*;
 use std::fs::File;
 
 fn main() {
-    let command = env::args().nth(1).expect("Missing argument");
-    match command.as_ref() {
-        "lexer" => lexer_command(),
-        _ => println!("Command not supported"),
-    }
-}
-
-fn lexer_command() {
-    let file_name = env::args().nth(2).expect("Missing argument");
+    let file_name = env::args().nth(1).expect("Missing argument");
     let contents = read_file(file_name);
     let tokens = lexer::parse_tokens(contents);
     // println!("{:?}", tokens);
