@@ -1,7 +1,8 @@
 use parser;
 
 pub fn program_asm(program: parser::Program) -> String {
-    return function_asm(program.function);
+    let function_asm = function_asm(program.function);
+    return format!("{}\n", function_asm);
 }
 
 pub fn function_asm(function: parser::Function) -> String {
@@ -13,7 +14,7 @@ pub fn statement_asm(statement: parser::Statement) -> String {
     match statement {
         parser::Statement::Return(expression) => {
             let expression_asm = expression_asm(expression);
-            return format!("\tmovl\t${}, %eax\n\tret\n", expression_asm);
+            return format!("\tmovl\t${}, %eax\n\tret", expression_asm);
         },
     }
 }
