@@ -9,6 +9,9 @@ pub enum Token {
     KeywordReturn,
     Identifier(String),
     IntegerLiteral(i64),
+    Negation,
+    BitwiseComplement,
+    LogicalNegation,
 }
 
 pub fn parse_tokens(contents: String) -> Vec<Token> {
@@ -20,6 +23,9 @@ pub fn parse_tokens(contents: String) -> Vec<Token> {
             "}" => tokens.push(Token::CloseBrace),
             "(" => tokens.push(Token::OpenParen),
             ")" => tokens.push(Token::CloseParen),
+            "-" => tokens.push(Token::Negation),
+            "~" => tokens.push(Token::BitwiseComplement),
+            "!" => tokens.push(Token::LogicalNegation),
             ";" => tokens.push(Token::Semicolon),
             "int" => tokens.push(Token::KeywordInt),
             "return" => tokens.push(Token::KeywordReturn),
@@ -45,7 +51,7 @@ fn parse_token_strings(contents: String) -> Vec<String> {
                     current_token = String::new();
                 }
             },
-            '{' | '}' | '(' | ')' | ';' => {
+            '{' | '}' | '(' | ')' | ';' | '-' | '!' | '~' => {
                 if current_token.len() > 0 {
                     tokens.push(current_token);
                     current_token = String::new();

@@ -2,27 +2,52 @@ mod lexer;
 mod parser;
 mod generator;
 
-use std::env;
+extern crate clap;
+
 use std::io::prelude::*;
 use std::fs::File;
 use std::process::Command;
+use std::io;
+use clap::{Arg, App};
 
 fn main() {
-    let file_name = env::args().nth(1).expect("Missing argument");
+    let matches = App::new("acc")
+                      .arg(Arg::with_name("verbose")
+                           .short("v")
+                           .help("Verbose mode"))
+                      .arg(Arg::with_name("INPUT")
+                           .help("Sets the input file to use")
+                           .required(true)
+                           .index(1))
+                      .get_matches();
+    let file_name = matches.value_of("INPUT").unwrap().to_string();
+    let verbose = matches.is_present("verbose");
     let contents = read_file(&file_name);
     let tokens = lexer::parse_tokens(contents);
     let program = parser::parse_program(&tokens);
     match program {
         Ok(program) => {
-            let assembly = generator::program_asm(program);
             let assembly_file_name = file_name.replace(".c", ".s");
+            let assembly = generator::program_asm(program);
+            if verbose {
+                println!("{}", assembly);
+            }
             write_file(&assembly_file_name, assembly);
+
             let executable_file_name = file_name.replace(".c", "");
-            Command::new("sh")
+            let output = Command::new("sh")
                 .arg("-c")
-                .arg(format!("gcc -m32 {} -o {}", assembly_file_name, executable_file_name))
+                .arg(format!("gcc {} -o {}", assembly_file_name, executable_file_name))
                 .output()
                 .expect("failed to execute process");
+
+            if verbose {
+                println!("status: {}", output.status);
+            }
+            io::stdout().write_all(&output.stdout).unwrap();
+            io::stderr().write_all(&output.stderr).unwrap();
+            assert!(output.status.success());
+
             std::fs::remove_file(assembly_file_name).expect("Unable to delete assembly file");
         },
         Err(error) => println!("{:?}", error),

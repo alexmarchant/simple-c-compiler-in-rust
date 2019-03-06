@@ -3,3 +3,6 @@
 name = "simple-c-compiler-in-rust"
 version = "0.0.1"
 authors = [ "Alex <you@example.com>" ]
+
+[dependencies]
+clap = "2.32.0"

@@ -1,4 +1,4 @@
-use lexer;
+use lexer::Token;
 
 #[derive(Debug)]
 pub struct Program {
@@ -16,9 +16,23 @@ pub enum Statement {
     Return(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Constant(i64),
+    UnaryOperation(Box<UnaryOperation>),
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryOperator {
+    Negation,
+    BitwiseComplement,
+    LogicalNegation,
+}
+
+#[derive(Debug, Clone)]
+pub struct UnaryOperation {
+    pub operator: UnaryOperator,
+    pub expression: Expression,
 }
 
 #[derive(Debug)]
@@ -35,7 +49,7 @@ pub enum Error {
     ExpressionInvalid,
 }
 
-pub fn parse_program(tokens: &Vec<lexer::Token>) -> Result<Program, Error> {
+pub fn parse_program(tokens: &Vec<Token>) -> Result<Program, Error> {
     let mut p_tokens = tokens.clone();
     match parse_function(&mut p_tokens) {
         Ok(function) => {
@@ -45,14 +59,14 @@ pub fn parse_program(tokens: &Vec<lexer::Token>) -> Result<Program, Error> {
     }
 }
 
-pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error> {
+pub fn parse_function(tokens: &mut Vec<Token>) -> Result<Function, Error> {
     let f_name: String;
     let f_statement: Statement;
 
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::KeywordInt => {},
+                Token::KeywordInt => {},
                 _ => {
                     println!("{:?}", token);
                     return Err(Error::FunctionMissingReturnType)
@@ -65,7 +79,7 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::Identifier(name) => f_name = name,
+                Token::Identifier(name) => f_name = name,
                 _ => return Err(Error::FunctionMissingName),
             }
         },
@@ -75,7 +89,7 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::OpenParen => {},
+                Token::OpenParen => {},
                 _ => return Err(Error::FunctionMissingOpeningParen),
             }
         },
@@ -85,7 +99,7 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::CloseParen => {},
+                Token::CloseParen => {},
                 _ => return Err(Error::FunctionMissingClosingParen),
             }
         },
@@ -95,7 +109,7 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::OpenBrace => {},
+                Token::OpenBrace => {},
                 _ => return Err(Error::FunctionMissingOpeningBrace),
             }
         },
@@ -110,7 +124,7 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::CloseBrace => {},
+                Token::CloseBrace => {},
                 _ => return Err(Error::FunctionMissingClosingBrace),
             }
         },
@@ -123,13 +137,13 @@ pub fn parse_function(tokens: &mut Vec<lexer::Token>) -> Result<Function, Error>
     });
 }
 
-pub fn parse_statement(tokens: &mut Vec<lexer::Token>) -> Result<Statement, Error> {
+pub fn parse_statement(tokens: &mut Vec<Token>) -> Result<Statement, Error> {
     let s_expression: Expression;
 
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::KeywordReturn => {},
+                Token::KeywordReturn => {},
                 _ => return Err(Error::StatementInvalid),
             }
         },
@@ -144,7 +158,7 @@ pub fn parse_statement(tokens: &mut Vec<lexer::Token>) -> Result<Statement, Erro
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::Semicolon => {},
+                Token::Semicolon => {},
                 _ => return Err(Error::StatementMissingSemicolon),
             }
         },
@@ -154,11 +168,26 @@ pub fn parse_statement(tokens: &mut Vec<lexer::Token>) -> Result<Statement, Erro
     return Ok(Statement::Return(s_expression));
 }
 
-pub fn parse_expression(tokens: &mut Vec<lexer::Token>) -> Result<Expression, Error> {
+pub fn parse_expression(tokens: &mut Vec<Token>) -> Result<Expression, Error> {
     match shift(tokens) {
         Some(token) => {
             match token {
-                lexer::Token::IntegerLiteral(value) => return Ok(Expression::Constant(value)),
+                Token::Negation | Token::BitwiseComplement | Token::LogicalNegation => {
+                    let operator = operator_for_token(token).expect("Error converting token to operator");
+                    let nested_expression: Expression;
+                    match parse_expression(tokens) {
+                        Ok(expression) => nested_expression = expression,
+                        Err(error) => return Err(error),
+                    }
+
+                    let unary_operation = UnaryOperation {
+                        operator: operator,
+                        expression: nested_expression,
+                    };
+
+                    return Ok(Expression::UnaryOperation(Box::new(unary_operation)));
+                }
+                Token::IntegerLiteral(value) => return Ok(Expression::Constant(value)),
                 _ => return Err(Error::ExpressionInvalid),
             }
         },
@@ -166,7 +195,7 @@ pub fn parse_expression(tokens: &mut Vec<lexer::Token>) -> Result<Expression, Er
     }
 }
 
-fn shift(tokens: &mut Vec<lexer::Token>) -> Option<lexer::Token> {
+fn shift(tokens: &mut Vec<Token>) -> Option<Token> {
     if tokens.len() > 0 {
         return Some(tokens.remove(0));
     } else {
@@ -174,3 +203,11 @@ fn shift(tokens: &mut Vec<lexer::Token>) -> Option<lexer::Token> {
     }
 }
 
+fn operator_for_token(token: Token) -> Option<UnaryOperator> {
+    match token {
+        Token::Negation => return Some(UnaryOperator::Negation),
+        Token::BitwiseComplement => return Some(UnaryOperator::BitwiseComplement),
+        Token::LogicalNegation => return Some(UnaryOperator::LogicalNegation),
+        _ => return None,
+    }
+}
