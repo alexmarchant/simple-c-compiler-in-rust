@@ -26,6 +26,7 @@ fn main() {
     let tokens = lexer::parse_tokens(contents);
     let program = parser::parse_program(tokens);
     if debug {
+        println!("-----AST-----");
         println!("{:#?}", program);
     }
     match program {
@@ -33,6 +34,8 @@ fn main() {
             let assembly_file_name = file_name.replace(".c", ".s");
             let assembly = generator::program_asm(program);
             if debug {
+                println!("");
+                println!("-----ASM-----");
                 println!("{}", assembly);
             }
             write_file(&assembly_file_name, assembly);
@@ -45,6 +48,8 @@ fn main() {
                 .expect("failed to execute process");
 
             if debug {
+                println!("");
+                println!("-----GCC status-----");
                 println!("status: {}", output.status);
             }
             io::stdout().write_all(&output.stdout).unwrap();
