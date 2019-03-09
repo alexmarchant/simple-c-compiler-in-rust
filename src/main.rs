@@ -24,7 +24,7 @@ fn main() {
     let debug = matches.is_present("debug");
     let contents = read_file(&file_name);
     let tokens = lexer::parse_tokens(contents);
-    let program = parser::parse_program(tokens);
+    let program = parser::program::parse(tokens);
     if debug {
         println!("-----AST-----");
         println!("{:#?}", program);
@@ -58,7 +58,7 @@ fn main() {
 
             std::fs::remove_file(assembly_file_name).expect("Unable to delete assembly file");
         },
-        Err(err) => println!("{}", err),
+        Err(err) => panic!("{}", err),
     }
 }
 

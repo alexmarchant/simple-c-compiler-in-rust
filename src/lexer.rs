@@ -15,6 +15,14 @@ pub enum Token {
     PlusSign,
     MultiplicationSign,
     DivisionSign,
+    And,
+    Or,
+    Equal,
+    NotEqual,
+    LessThan,
+    LessThanOrEqual,
+    GreaterThan,
+    GreaterThanOrEqual,
 }
 
 pub fn parse_tokens(contents: String) -> Vec<Token> {
@@ -35,6 +43,14 @@ pub fn parse_tokens(contents: String) -> Vec<Token> {
             ";" => tokens.push(Token::Semicolon),
             "int" => tokens.push(Token::KeywordInt),
             "return" => tokens.push(Token::KeywordReturn),
+            "&&" => tokens.push(Token::And),
+            "||" => tokens.push(Token::Or),
+            "==" => tokens.push(Token::Equal),
+            "!=" => tokens.push(Token::NotEqual),
+            "<" => tokens.push(Token::LessThan),
+            "<=" => tokens.push(Token::LessThanOrEqual),
+            ">" => tokens.push(Token::GreaterThan),
+            ">=" => tokens.push(Token::GreaterThanOrEqual),
             _ => {
                 match token_string.parse::<i64>() {
                     Ok(i) => tokens.push(Token::IntegerLiteral(i)),
