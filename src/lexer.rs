@@ -9,9 +9,12 @@ pub enum Token {
     KeywordReturn,
     Identifier(String),
     IntegerLiteral(i64),
-    Negation,
     BitwiseComplement,
     LogicalNegation,
+    MinusSign,
+    PlusSign,
+    MultiplicationSign,
+    DivisionSign,
 }
 
 pub fn parse_tokens(contents: String) -> Vec<Token> {
@@ -23,7 +26,10 @@ pub fn parse_tokens(contents: String) -> Vec<Token> {
             "}" => tokens.push(Token::CloseBrace),
             "(" => tokens.push(Token::OpenParen),
             ")" => tokens.push(Token::CloseParen),
-            "-" => tokens.push(Token::Negation),
+            "-" => tokens.push(Token::MinusSign),
+            "+" => tokens.push(Token::PlusSign),
+            "*" => tokens.push(Token::MultiplicationSign),
+            "/" => tokens.push(Token::DivisionSign),
             "~" => tokens.push(Token::BitwiseComplement),
             "!" => tokens.push(Token::LogicalNegation),
             ";" => tokens.push(Token::Semicolon),

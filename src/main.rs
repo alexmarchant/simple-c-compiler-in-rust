@@ -12,24 +12,27 @@ use clap::{Arg, App};
 
 fn main() {
     let matches = App::new("acc")
-                      .arg(Arg::with_name("verbose")
-                           .short("v")
-                           .help("Verbose mode"))
+                      .arg(Arg::with_name("debug")
+                           .short("d")
+                           .help("Debug mode"))
                       .arg(Arg::with_name("INPUT")
                            .help("Sets the input file to use")
                            .required(true)
                            .index(1))
                       .get_matches();
     let file_name = matches.value_of("INPUT").unwrap().to_string();
-    let verbose = matches.is_present("verbose");
+    let debug = matches.is_present("debug");
     let contents = read_file(&file_name);
     let tokens = lexer::parse_tokens(contents);
-    let program = parser::parse_program(&tokens);
+    let program = parser::parse_program(tokens);
+    if debug {
+        println!("{:#?}", program);
+    }
     match program {
         Ok(program) => {
             let assembly_file_name = file_name.replace(".c", ".s");
             let assembly = generator::program_asm(program);
-            if verbose {
+            if debug {
                 println!("{}", assembly);
             }
             write_file(&assembly_file_name, assembly);
@@ -41,7 +44,7 @@ fn main() {
                 .output()
                 .expect("failed to execute process");
 
-            if verbose {
+            if debug {
                 println!("status: {}", output.status);
             }
             io::stdout().write_all(&output.stdout).unwrap();
@@ -50,7 +53,7 @@ fn main() {
 
             std::fs::remove_file(assembly_file_name).expect("Unable to delete assembly file");
         },
-        Err(error) => println!("{:?}", error),
+        Err(err) => println!("{}", err),
     }
 }
 
