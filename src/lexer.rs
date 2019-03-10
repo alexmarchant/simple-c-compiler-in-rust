@@ -91,10 +91,10 @@ impl Token {
             return Some((Token::DivisionSign, &string[1..]));
         }
         if Regex::new(r"^int\s").unwrap().is_match(string) {
-            return Some((Token::KeywordInt, &string[5..]));
+            return Some((Token::KeywordInt, &string[4..]));
         }
         if Regex::new(r"^return\s").unwrap().is_match(string) {
-            return Some((Token::KeywordReturn, &string[8..]));
+            return Some((Token::KeywordReturn, &string[7..]));
         }
         if let Some(found) = Regex::new(r"^\d+").unwrap().find(&string.to_string()) {
             let length = found.end() - found.start();
