@@ -1,6 +1,6 @@
 Simple c to x64 asm compiler
 
-Support:
+Supports:
 - Unary operators (~ - !)
 - Binary operators (|| && < > <= >= ~ - ! != == + - * /)
 - Basic math, including correct order of ops
