@@ -84,12 +84,6 @@ impl Asm {
         );
     }
 
-//    pub fn todo(&mut self) {
-//        self.source.push_str(
-//            "TODO\n",
-//        );
-//    }
-
     pub fn ret(&mut self) {
         self.source.push_str(
             "\tret\n",
