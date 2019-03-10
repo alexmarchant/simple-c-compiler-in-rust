@@ -1,6 +1,9 @@
-Simple c compiler
+Simple c to x64 asm compiler
 
-Can currently handle:
+Support:
+- Unary operators (~ - !)
+- Binary operators (|| && < > <= >= ~ - ! != == + - * /)
+- Basic math, including correct order of ops
 - Variable declaration, assignment, and recall
-- Most operators || && < > <= >= ~ - ! != ==
+- int types (easiest, more later?)
 - Return statements
