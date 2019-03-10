@@ -7,16 +7,16 @@ pub enum Statement {
     Return(Expression),
 }
 
-pub fn parse(tokens: &[Token]) -> Result<(Statement, &[Token]), String> {
+pub fn parse(tokens: Vec<Token>) -> Result<(Statement, Vec<Token>), &'static str> {
     let statement: Statement;
 
     match tokens[0] {
         Token::KeywordReturn => {},
-        _ => return Err("Expecting 'return'".to_string()),
+        _ => return Err("Expecting 'return'"),
     }
 
-    let leftover_tokens: &[Token];
-    match expression::parse(&tokens[1..]) {
+    let leftover_tokens: Vec<Token>;
+    match expression::parse(tokens[1..].to_vec()) {
         Ok((expression, tokens)) => {
             statement = Statement::Return(expression);
             leftover_tokens = tokens;
@@ -26,8 +26,8 @@ pub fn parse(tokens: &[Token]) -> Result<(Statement, &[Token]), String> {
 
     match leftover_tokens[0] {
         Token::Semicolon => {},
-        _ => return Err("Expecting ';'".to_string()),
+        _ => return Err("Expecting ';'"),
     }
 
-    return Ok((statement, &leftover_tokens[1..]));
+    return Ok((statement, leftover_tokens[1..].to_vec()));
 }

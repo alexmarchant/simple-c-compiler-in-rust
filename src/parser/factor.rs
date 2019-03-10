@@ -1,6 +1,6 @@
 use lexer::Token;
-use parser::expression::Expression;
 use parser::expression;
+use parser::expression::Expression;
 use parser::factor;
 
 #[derive(Debug, Clone)]
@@ -23,66 +23,62 @@ pub struct UnaryOperation {
     pub factor: Factor,
 }
 
-pub fn parse(tokens: &[Token]) -> Result<(Factor, &[Token]), String> {
-    match parse_expression_with_parens(tokens) {
+#[derive(Debug, Clone)]
+pub enum BinaryFactorOperator {
+    Multiplication,
+    Division,
+}
+
+#[derive(Debug, Clone)]
+pub struct BinaryFactor {
+    pub operator: BinaryFactorOperator,
+    pub right_factor: Factor,
+}
+
+pub fn parse(tokens: Vec<Token>) -> Result<(Factor, Vec<Token>), &'static str> {
+    match expression::parse_with_parens(tokens.clone()) {
         Ok((expression, leftover_tokens)) => {
             return Ok((Factor::Expression(Box::new(expression)), leftover_tokens));
         },
         Err(_) => (),
     }
 
-    match parse_unary_operation(tokens) {
+    match parse_unary_operation(tokens.clone()) {
         Ok((operation, leftover_tokens)) => {
             return Ok((Factor::UnaryOperation(Box::new(operation)), leftover_tokens))
         },
         Err(_) => (),
     }
 
-    match parse_integer_literal(tokens) {
+    match parse_integer_literal(tokens.clone()) {
         Ok((integer, leftover_tokens)) => {
             return Ok((Factor::Constant(integer), leftover_tokens))
         },
         Err(_) => (),
     }
 
-    return Err("Invalid factor".to_string())
+    return Err("Invalid factor")
 }
 
-fn parse_expression_with_parens(tokens: &[Token]) -> Result<(Expression, &[Token]), String> {
-    match tokens[0] {
-        Token::OpenParen => (),
-        _ => return Err("Expecting '('".to_string()),
+pub fn binary_factor_operator_for_token(token: &Token) -> Option<BinaryFactorOperator> {
+    match token {
+        Token::MultiplicationSign => return Some(BinaryFactorOperator::Multiplication),
+        Token::DivisionSign => return Some(BinaryFactorOperator::Division),
+        _ => return None,
     }
-
-    let expression: Expression;
-    let leftover_tokens: &[Token];
-    match expression::parse(&tokens[1..]) {
-        Ok((matched_expression, tokens)) => {
-            expression = matched_expression;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
-
-    match leftover_tokens[0] {
-        Token::CloseParen => (),
-        _ => return Err("Expecting ')'".to_string()),
-    }
-
-    return Ok((expression, &leftover_tokens[1..]))
 }
 
-fn parse_unary_operation(tokens: &[Token]) -> Result<(UnaryOperation, &[Token]), String> {
+fn parse_unary_operation(tokens: Vec<Token>) -> Result<(UnaryOperation, Vec<Token>), &'static str> {
     let operator: UnaryOperator;
     let factor: Factor;
 
     match unary_operator_for_token(&tokens[0]) {
         Some(matched_operator) => operator = matched_operator,
-        None => return Err("Expecting ~ or ! or -".to_string()),
+        None => return Err("Expecting ~ or ! or -"),
     }
 
-    let leftover_tokens: &[Token];
-    match factor::parse(&tokens[1..]) {
+    let leftover_tokens: Vec<Token>;
+    match factor::parse(tokens[1..].to_vec()) {
         Ok((matched_factor, tokens)) => {
             factor = matched_factor;
             leftover_tokens = tokens; },
@@ -95,10 +91,10 @@ fn parse_unary_operation(tokens: &[Token]) -> Result<(UnaryOperation, &[Token]),
     ));
 }
 
-fn parse_integer_literal(tokens: &[Token]) -> Result<(i64, &[Token]), String> {
+fn parse_integer_literal(tokens: Vec<Token>) -> Result<(i64, Vec<Token>), &'static str> {
     match tokens[0] {
-        Token::IntegerLiteral(value) => return Ok((value, &tokens[1..])),
-        _ => return Err("Expecting integer literal".to_string()),
+        Token::IntegerLiteral(value) => return Ok((value, tokens[1..].to_vec())),
+        _ => return Err("Expecting integer literal"),
     }
 }
 

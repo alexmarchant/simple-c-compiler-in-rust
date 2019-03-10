@@ -1,14 +1,18 @@
 mod lexer;
 mod parser;
 mod generator;
+mod asm;
 
 extern crate clap;
+extern crate regex;
 
-use std::io::prelude::*;
-use std::fs::File;
-use std::process::Command;
 use std::io;
+use asm::Asm;
+use std::fs::File;
 use clap::{Arg, App};
+use std::io::prelude::*;
+use std::process::Command;
+use parser::program::Program;
 
 fn main() {
     let matches = App::new("acc")
@@ -22,44 +26,56 @@ fn main() {
                       .get_matches();
     let file_name = matches.value_of("INPUT").unwrap().to_string();
     let debug = matches.is_present("debug");
+
     let contents = read_file(&file_name);
-    let tokens = lexer::parse_tokens(contents);
-    let program = parser::program::parse(tokens);
+    let tokens = lexer::parse(contents);
+
     if debug {
+        println!("-----Tokens-----");
+        println!("{:#?}", tokens);
+    }
+
+    let program: Program;
+    match parser::program::parse(tokens) {
+        Ok(match_program) => program = match_program,
+        Err(err) => panic!("{}", err),
+    }
+
+    if debug {
+        println!("");
         println!("-----AST-----");
         println!("{:#?}", program);
     }
-    match program {
-        Ok(program) => {
-            let assembly_file_name = file_name.replace(".c", ".s");
-            let assembly = generator::program_asm(program);
-            if debug {
-                println!("");
-                println!("-----ASM-----");
-                println!("{}", assembly);
-            }
-            write_file(&assembly_file_name, assembly);
 
-            let executable_file_name = file_name.replace(".c", "");
-            let output = Command::new("sh")
-                .arg("-c")
-                .arg(format!("gcc {} -o {}", assembly_file_name, executable_file_name))
-                .output()
-                .expect("failed to execute process");
+    let assembly_file_name = file_name.replace(".c", ".s");
 
-            if debug {
-                println!("");
-                println!("-----GCC status-----");
-                println!("status: {}", output.status);
-            }
-            io::stdout().write_all(&output.stdout).unwrap();
-            io::stderr().write_all(&output.stderr).unwrap();
-            assert!(output.status.success());
-
-            std::fs::remove_file(assembly_file_name).expect("Unable to delete assembly file");
-        },
-        Err(err) => panic!("{}", err),
+    let mut asm: Asm = Default::default();
+    generator::program::asm(&mut asm, program);
+    if debug {
+        println!("");
+        println!("-----ASM-----");
+        println!("{}", asm.source);
     }
+    write_file(&assembly_file_name, &asm.source);
+
+    let executable_file_name = file_name.replace(".c", "");
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(format!("gcc {} -o {}", assembly_file_name, executable_file_name))
+        .output()
+        .expect("failed to execute process");
+
+    if debug {
+        println!("");
+        println!("-----GCC status-----");
+        println!("status: {}", output.status);
+    }
+
+    io::stdout().write_all(&output.stdout).unwrap();
+    io::stderr().write_all(&output.stderr).unwrap();
+    assert!(output.status.success());
+
+    std::fs::remove_file(assembly_file_name).expect("Unable to delete assembly file");
 }
 
 fn read_file(file_name: &String) -> String {
@@ -69,7 +85,7 @@ fn read_file(file_name: &String) -> String {
     return contents;
 }
 
-fn write_file(file_name: &String, contents: String) {
+fn write_file(file_name: &String, contents: &String) {
     let mut file = File::create(file_name).expect("Unable to create file");
     file.write_all(contents.as_bytes()).expect("Unable to write to file");
 }

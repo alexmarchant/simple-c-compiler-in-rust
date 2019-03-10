@@ -1,3 +1,5 @@
+use regex::Regex;
+
 #[derive(Debug, Clone)]
 pub enum Token {
     OpenBrace,
@@ -25,66 +27,100 @@ pub enum Token {
     GreaterThanOrEqual,
 }
 
-pub fn parse_tokens(contents: String) -> Vec<Token> {
-    let token_strings: Vec<String> = parse_token_strings(contents);
-    let mut tokens = Vec::new();
-    for token_string in &token_strings {
-        match token_string.as_ref() {
-            "{" => tokens.push(Token::OpenBrace),
-            "}" => tokens.push(Token::CloseBrace),
-            "(" => tokens.push(Token::OpenParen),
-            ")" => tokens.push(Token::CloseParen),
-            "-" => tokens.push(Token::MinusSign),
-            "+" => tokens.push(Token::PlusSign),
-            "*" => tokens.push(Token::MultiplicationSign),
-            "/" => tokens.push(Token::DivisionSign),
-            "~" => tokens.push(Token::BitwiseComplement),
-            "!" => tokens.push(Token::LogicalNegation),
-            ";" => tokens.push(Token::Semicolon),
-            "int" => tokens.push(Token::KeywordInt),
-            "return" => tokens.push(Token::KeywordReturn),
-            "&&" => tokens.push(Token::And),
-            "||" => tokens.push(Token::Or),
-            "==" => tokens.push(Token::Equal),
-            "!=" => tokens.push(Token::NotEqual),
-            "<" => tokens.push(Token::LessThan),
-            "<=" => tokens.push(Token::LessThanOrEqual),
-            ">" => tokens.push(Token::GreaterThan),
-            ">=" => tokens.push(Token::GreaterThanOrEqual),
-            _ => {
-                match token_string.parse::<i64>() {
-                    Ok(i) => tokens.push(Token::IntegerLiteral(i)),
-                    Err(_) => tokens.push(Token::Identifier(token_string.clone())),
-                }
-            },
+impl Token {
+    fn from_string(string: &str) -> Option<(Token, &str)> {
+        if Regex::new(r"^\{").unwrap().is_match(string) {
+            return Some((Token::OpenBrace, &string[1..]));
         }
+        if Regex::new(r"^\}").unwrap().is_match(string) {
+            return Some((Token::CloseBrace, &string[1..]));
+        }
+        if Regex::new(r"^\(").unwrap().is_match(string) {
+            return Some((Token::OpenParen, &string[1..]));
+        }
+        if Regex::new(r"^\)").unwrap().is_match(string) {
+            return Some((Token::CloseParen, &string[1..]));
+        }
+        if Regex::new(r"^;").unwrap().is_match(string) {
+            return Some((Token::Semicolon, &string[1..]));
+        }
+        if Regex::new(r"^&&").unwrap().is_match(string) {
+            return Some((Token::And, &string[2..]));
+        }
+        if Regex::new(r"^\|\|").unwrap().is_match(string) {
+            return Some((Token::Or, &string[2..]));
+        }
+        if Regex::new(r"^==").unwrap().is_match(string) {
+            return Some((Token::Equal, &string[2..]));
+        }
+        if Regex::new(r"^!=").unwrap().is_match(string) {
+            return Some((Token::NotEqual, &string[2..]));
+        }
+        if Regex::new(r"^<=").unwrap().is_match(string) {
+            return Some((Token::LessThanOrEqual, &string[2..]));
+        }
+        if Regex::new(r"^<").unwrap().is_match(string) {
+            return Some((Token::LessThan, &string[1..]));
+        }
+        if Regex::new(r"^>=").unwrap().is_match(string) {
+            return Some((Token::GreaterThanOrEqual, &string[2..]));
+        }
+        if Regex::new(r"^>").unwrap().is_match(string) {
+            return Some((Token::GreaterThan, &string[1..]));
+        }
+        if Regex::new(r"^~").unwrap().is_match(string) {
+            return Some((Token::BitwiseComplement, &string[1..]));
+        }
+        if Regex::new(r"^!").unwrap().is_match(string) {
+            return Some((Token::LogicalNegation, &string[1..]));
+        }
+        if Regex::new(r"^-").unwrap().is_match(string) {
+            return Some((Token::MinusSign, &string[1..]));
+        }
+        if Regex::new(r"^\+").unwrap().is_match(string) {
+            return Some((Token::PlusSign, &string[1..]));
+        }
+        if Regex::new(r"^\*").unwrap().is_match(string) {
+            return Some((Token::MultiplicationSign, &string[1..]));
+        }
+        if Regex::new(r"^/").unwrap().is_match(string) {
+            return Some((Token::DivisionSign, &string[1..]));
+        }
+        if Regex::new(r"^int").unwrap().is_match(string) {
+            return Some((Token::KeywordInt, &string[4..]));
+        }
+        if Regex::new(r"^return").unwrap().is_match(string) {
+            return Some((Token::KeywordReturn, &string[7..]));
+        }
+        if let Some(found) = Regex::new(r"^\d+").unwrap().find(&string.to_string()) {
+            let length = found.end() - found.start();
+            match found.as_str().parse::<i64>() {
+                Ok(i) => return Some((Token::IntegerLiteral(i), &string[length..])),
+                Err(err) => panic!("Error parsing integer: {}", err),
+            }
+        }
+        if let Some(found) = Regex::new(r"^\w+").unwrap().find(&string.to_string()) {
+            let length = found.end() - found.start();
+            let value = found.as_str().to_string();
+            return Some((Token::Identifier(value), &string[length..]));
+        }
+
+        return None
     }
-    return tokens;
 }
 
-fn parse_token_strings(contents: String) -> Vec<String> {
+pub fn parse(contents: String) -> Vec<Token> {
     let mut tokens = Vec::new();
-    let mut current_token = String::new();
-    for char in contents.chars() { 
-        match char {
-            ' ' | '\n' | '\t' => {
-                if current_token.len() > 0 {
-                    tokens.push(current_token);
-                    current_token = String::new();
-                }
-            },
-            '{' | '}' | '(' | ')' | ';' | '-' | '!' | '~' => {
-                if current_token.len() > 0 {
-                    tokens.push(current_token);
-                    current_token = String::new();
-                }
-                let mut token = String::new();
-                token.push(char);
-                tokens.push(token);
-            },
-            _ => current_token.push(char),
-        }
+    let mut leftover_contents: &str = &contents.trim();
+
+    while let Some((token, leftover_string)) = Token::from_string(leftover_contents) {
+        leftover_contents = leftover_string.trim();
+        tokens.push(token);
     }
+
+    if leftover_contents.chars().count() > 0 {
+        panic!("Error parsing program");
+    }
+
     return tokens;
 }
-
