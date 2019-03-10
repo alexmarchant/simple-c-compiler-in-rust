@@ -3,19 +3,25 @@ use parser::term::Term;
 use lexer::Token;
 
 #[derive(Debug, Clone)]
-pub struct Expression {
+pub enum Expression {
+    Assignment(Box<Assignment>),
+    LogicalOrExpression(LogicalOrExpression),
+}
+
+#[derive(Debug, Clone)]
+pub struct LogicalOrExpression {
     pub expression: LogicalAndExpression,
     pub binary_expressions: Vec<BinaryLogicalAndExpression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct BinaryLogicalAndExpression {
-    pub operator: ExpressionOperator,
+    pub operator: LogicalOrOperator,
     pub right_expression: LogicalAndExpression,
 }
 
 #[derive(Debug, Clone)]
-pub enum ExpressionOperator {
+pub enum LogicalOrOperator {
     Or,
 }
 
@@ -93,34 +99,75 @@ pub enum AdditiveOperator {
     Addition,
 }
 
-pub fn parse(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), &'static str> {
+#[derive(Debug, Clone)]
+pub struct Var {
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Assignment {
+    pub var: Var,
+    pub expression: Expression,
+}
+
+pub fn parse(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), String> {
+    match parse_assignment(tokens.clone()) {
+        Ok((assignment, leftover_tokens)) => {
+            return Ok((
+                Expression::Assignment(Box::new(assignment)),
+                leftover_tokens
+            ));
+        },
+        Err(_) => (),
+    }
+
+    let (expression, leftover_tokens) = parse_logical_or(tokens.clone())?;
+    return Ok((
+        Expression::LogicalOrExpression(expression),
+        leftover_tokens,
+    ));
+}
+
+pub fn parse_with_parens(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), String> {
+    match tokens.get(0) {
+        Some(Token::OpenParen) => (),
+        _ => return Err("Expecting '('".to_string()),
+    }
+
+    let expression: Expression;
+    let leftover_tokens: Vec<Token>;
+    let (matched_expression, tokens) = parse(tokens[1..].to_vec())?;
+    expression = matched_expression;
+    leftover_tokens = tokens;
+
+    match leftover_tokens[0] {
+        Token::CloseParen => (),
+        _ => return Err("Expecting ')'".to_string()),
+    }
+
+    return Ok((expression, leftover_tokens[1..].to_vec()))
+}
+
+pub fn parse_logical_or(tokens: Vec<Token>) -> Result<(LogicalOrExpression, Vec<Token>), String> {
     let expression: LogicalAndExpression;
     let mut binary_expressions: Vec<BinaryLogicalAndExpression> = Vec::new();
     let mut leftover_tokens: Vec<Token>;
 
-    match parse_logical_and(tokens) {
-        Ok((matched_expression, tokens)) => {
-            expression = matched_expression;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
+    let (matched_expression, tokens) = parse_logical_and(tokens)?;
+    expression = matched_expression;
+    leftover_tokens = tokens;
 
     while let Some(operator) = expression_operator_for_token(&leftover_tokens[0]) {
-        match parse_logical_and(leftover_tokens[1..].to_vec()) {
-            Ok((matched_expression, tokens)) => {
-                binary_expressions.push(BinaryLogicalAndExpression {
-                    operator: operator,
-                    right_expression: matched_expression,
-                });
-                leftover_tokens = tokens;
-            },
-            Err(err) => return Err(err),
-        }
+        let (matched_expression, tokens) = parse_logical_and(leftover_tokens[1..].to_vec())?;
+        binary_expressions.push(BinaryLogicalAndExpression {
+            operator: operator,
+            right_expression: matched_expression,
+        });
+        leftover_tokens = tokens;
     }
 
     return Ok((
-        Expression {
+        LogicalOrExpression {
             expression: expression,
             binary_expressions: binary_expressions
         },
@@ -128,54 +175,20 @@ pub fn parse(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), &'static st
     ));
 }
 
-pub fn parse_with_parens(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), &'static str> {
-    match tokens[0] {
-        Token::OpenParen => (),
-        _ => return Err("Expecting '('"),
-    }
-
-    let expression: Expression;
-    let leftover_tokens: Vec<Token>;
-    match parse(tokens[1..].to_vec()) {
-        Ok((matched_expression, tokens)) => {
-            expression = matched_expression;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
-
-    match leftover_tokens[0] {
-        Token::CloseParen => (),
-        _ => return Err("Expecting ')'"),
-    }
-
-    return Ok((expression, leftover_tokens[1..].to_vec()))
-}
-
-fn parse_logical_and(tokens: Vec<Token>) -> Result<(LogicalAndExpression, Vec<Token>), &'static str> {
-    let expression: EqualityExpression;
+fn parse_logical_and(tokens: Vec<Token>) -> Result<(LogicalAndExpression, Vec<Token>), String> {
     let mut binary_expressions: Vec<BinaryEqualityExpression> = Vec::new();
     let mut leftover_tokens: Vec<Token>;
 
-    match parse_equality(tokens) {
-        Ok((matched_expression, tokens)) => {
-            expression = matched_expression;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
+    let (expression, tokens) = parse_equality(tokens)?;
+    leftover_tokens = tokens;
 
     while let Some(operator) = logical_and_operator_for_token(&leftover_tokens[0]) {
-        match parse_equality(leftover_tokens[1..].to_vec()) {
-            Ok((matched_expression, tokens)) => {
-                binary_expressions.push(BinaryEqualityExpression {
-                    operator: operator,
-                    right_expression: matched_expression,
-                });
-                leftover_tokens = tokens;
-            },
-            Err(err) => return Err(err),
-        }
+        let (matched_expression, tokens) = parse_equality(leftover_tokens[1..].to_vec())?;
+        binary_expressions.push(BinaryEqualityExpression {
+            operator: operator,
+            right_expression: matched_expression,
+        });
+        leftover_tokens = tokens;
     }
 
     return Ok((
@@ -187,30 +200,20 @@ fn parse_logical_and(tokens: Vec<Token>) -> Result<(LogicalAndExpression, Vec<To
     ));
 }
 
-fn parse_equality(tokens: Vec<Token>) -> Result<(EqualityExpression, Vec<Token>), &'static str> {
-    let expression: RelationalExpression;
+fn parse_equality(tokens: Vec<Token>) -> Result<(EqualityExpression, Vec<Token>), String> {
     let mut binary_expressions: Vec<BinaryRelationalExpression> = Vec::new();
     let mut leftover_tokens: Vec<Token>;
 
-    match parse_relational(tokens) {
-        Ok((matched_expression, tokens)) => {
-            expression = matched_expression;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
+    let (expression, tokens) = parse_relational(tokens)?;
+    leftover_tokens = tokens;
 
     while let Some(operator) = equality_operator_for_token(&leftover_tokens[0]) {
-        match parse_relational(leftover_tokens[1..].to_vec()) {
-            Ok((matched_expression, tokens)) => {
-                binary_expressions.push(BinaryRelationalExpression {
-                    operator: operator,
-                    right_expression: matched_expression,
-                });
-                leftover_tokens = tokens;
-            },
-            Err(err) => return Err(err),
-        }
+        let (matched_expression, tokens) = parse_relational(leftover_tokens[1..].to_vec())?;
+        binary_expressions.push(BinaryRelationalExpression {
+            operator: operator,
+            right_expression: matched_expression,
+        });
+        leftover_tokens = tokens;
     }
 
     return Ok((
@@ -222,30 +225,20 @@ fn parse_equality(tokens: Vec<Token>) -> Result<(EqualityExpression, Vec<Token>)
     ));
 }
 
-fn parse_relational(tokens: Vec<Token>) -> Result<(RelationalExpression, Vec<Token>), &'static str> {
-    let expression: AdditiveExpression;
+fn parse_relational(tokens: Vec<Token>) -> Result<(RelationalExpression, Vec<Token>), String> {
     let mut binary_expressions: Vec<BinaryAdditiveExpression> = Vec::new();
     let mut leftover_tokens: Vec<Token>;
 
-    match parse_additive(tokens) {
-        Ok((matched_expression, tokens)) => {
-            expression = matched_expression;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
+    let (expression, tokens) = parse_additive(tokens)?;
+    leftover_tokens = tokens;
 
     while let Some(operator) = relational_operator_for_token(&leftover_tokens[0]) {
-        match parse_additive(leftover_tokens[1..].to_vec()) {
-            Ok((matched_expression, tokens)) => {
-                binary_expressions.push(BinaryAdditiveExpression {
-                    operator: operator,
-                    right_expression: matched_expression,
-                });
-                leftover_tokens = tokens;
-            },
-            Err(err) => return Err(err),
-        }
+        let (matched_expression, tokens) = parse_additive(leftover_tokens[1..].to_vec())?;
+        binary_expressions.push(BinaryAdditiveExpression {
+            operator: operator,
+            right_expression: matched_expression,
+        });
+        leftover_tokens = tokens;
     }
 
     return Ok((
@@ -257,30 +250,20 @@ fn parse_relational(tokens: Vec<Token>) -> Result<(RelationalExpression, Vec<Tok
     ));
 }
 
-fn parse_additive(tokens: Vec<Token>) -> Result<(AdditiveExpression, Vec<Token>), &'static str> {
-    let term: Term;
+fn parse_additive(tokens: Vec<Token>) -> Result<(AdditiveExpression, Vec<Token>), String> {
     let mut binary_terms: Vec<BinaryTerms> = Vec::new();
     let mut leftover_tokens: Vec<Token>;
 
-    match term::parse(tokens) {
-        Ok((matched_term, tokens)) => {
-            term = matched_term;
-            leftover_tokens = tokens;
-        },
-        Err(err) => return Err(err),
-    }
+    let (term, tokens) = term::parse(tokens)?;
+    leftover_tokens = tokens;
 
     while let Some(operator) = additive_operator_for_token(&leftover_tokens[0]) {
-        match term::parse(leftover_tokens[1..].to_vec()) {
-            Ok((matched_term, tokens)) => {
-                binary_terms.push(BinaryTerms {
-                    operator: operator,
-                    right_term: matched_term,
-                });
-                leftover_tokens = tokens;
-            },
-            Err(err) => return Err(err),
-        }
+        let (matched_term, tokens) = term::parse(leftover_tokens[1..].to_vec())?;
+        binary_terms.push(BinaryTerms {
+            operator: operator,
+            right_term: matched_term,
+        });
+        leftover_tokens = tokens;
     }
 
     return Ok((
@@ -289,9 +272,35 @@ fn parse_additive(tokens: Vec<Token>) -> Result<(AdditiveExpression, Vec<Token>)
     ));
 }
 
-fn expression_operator_for_token(token: &Token) -> Option<ExpressionOperator> {
+fn parse_assignment(tokens: Vec<Token>) -> Result<(Assignment, Vec<Token>), String> {
+    let var: Var;
+
+    let mut leftover_tokens: Vec<Token>;
+    match tokens.get(0) {
+        Some(Token::Identifier(ref name)) => {
+            var = Var { name: name.clone() };
+            leftover_tokens = tokens[1..].to_vec();
+        },
+        _ => return Err("Invalid assignment: Expecting identifier".to_string()),
+    }
+
+    match leftover_tokens.get(0) {
+        Some(Token::Assignment) => {
+            leftover_tokens = leftover_tokens[1..].to_vec();
+        },
+        _ => return Err("Invalid assignment: Expecting '='".to_string()),
+    }
+
+    let (expression, leftover_tokens) = parse(leftover_tokens)?;
+    return Ok((
+        Assignment { var: var, expression: expression },
+        leftover_tokens,
+    ));
+}
+
+fn expression_operator_for_token(token: &Token) -> Option<LogicalOrOperator> {
     match token {
-        Token::Or => return Some(ExpressionOperator::Or),
+        Token::Or => return Some(LogicalOrOperator::Or),
         _ => return None,
     }
 }

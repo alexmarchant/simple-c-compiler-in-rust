@@ -25,6 +25,7 @@ pub enum Token {
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
+    Assignment,
 }
 
 impl Token {
@@ -68,6 +69,9 @@ impl Token {
         if Regex::new(r"^>").unwrap().is_match(string) {
             return Some((Token::GreaterThan, &string[1..]));
         }
+        if Regex::new(r"^=").unwrap().is_match(string) {
+            return Some((Token::Assignment, &string[1..]));
+        }
         if Regex::new(r"^~").unwrap().is_match(string) {
             return Some((Token::BitwiseComplement, &string[1..]));
         }
@@ -86,11 +90,11 @@ impl Token {
         if Regex::new(r"^/").unwrap().is_match(string) {
             return Some((Token::DivisionSign, &string[1..]));
         }
-        if Regex::new(r"^int").unwrap().is_match(string) {
-            return Some((Token::KeywordInt, &string[4..]));
+        if Regex::new(r"^int\s").unwrap().is_match(string) {
+            return Some((Token::KeywordInt, &string[5..]));
         }
-        if Regex::new(r"^return").unwrap().is_match(string) {
-            return Some((Token::KeywordReturn, &string[7..]));
+        if Regex::new(r"^return\s").unwrap().is_match(string) {
+            return Some((Token::KeywordReturn, &string[8..]));
         }
         if let Some(found) = Regex::new(r"^\d+").unwrap().find(&string.to_string()) {
             let length = found.end() - found.start();

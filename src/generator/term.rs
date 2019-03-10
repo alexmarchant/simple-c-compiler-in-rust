@@ -1,15 +1,16 @@
 use asm::Asm;
-use asm::Register::{Rax, Rcx, Rdx};
 use generator::factor;
 use parser::term::Term;
+use parser::StackFrame;
+use asm::Register::{Rax, Rcx, Rdx};
 use parser::factor::BinaryFactorOperator;
 
-pub fn asm(asm: &mut Asm, term: Term) {
-    factor::asm(asm, term.factor);
+pub fn asm(asm: &mut Asm, term: Term, stack_frame: &StackFrame) {
+    factor::asm(asm, term.factor, stack_frame);
 
     for factor in term.binary_factors {
         asm.push(Rax);
-        factor::asm(asm, factor.right_factor);
+        factor::asm(asm, factor.right_factor, stack_frame);
         asm.pop(Rcx);
 
         match factor.operator {

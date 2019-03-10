@@ -1,9 +1,12 @@
 use asm::Asm;
+use generator;
 use generator::term;
-use asm::Register::{Rax, Rcx, Al};
+use parser::StackFrame;
+use asm::Register::{Rax, Rcx, Al, RbpOffset};
 use parser::expression::{
     Expression,
-    ExpressionOperator,
+    LogicalOrExpression,
+    LogicalOrOperator,
     LogicalAndExpression,
     LogicalAndOperator,
     EqualityExpression,
@@ -12,15 +15,27 @@ use parser::expression::{
     RelationalOperator,
     AdditiveExpression,
     AdditiveOperator,
+    Assignment,
 };
 
-pub fn asm(asm: &mut Asm, expression: Expression) {
+pub fn asm(asm: &mut Asm, expression: Expression, stack_frame: &StackFrame) {
+    match expression {
+        Expression::Assignment(assignment) => {
+            assignment_asm(asm, assignment, stack_frame);
+        },
+        Expression::LogicalOrExpression(expression) => {
+            logical_or_asm(asm, expression, stack_frame);
+        },
+    }
+}
+
+pub fn logical_or_asm(asm: &mut Asm, expression: LogicalOrExpression, stack_frame: &StackFrame) {
     // e1
-    logical_and_asm(asm, expression.expression);
+    logical_and_asm(asm, expression.expression, stack_frame);
 
     for binary_expression in expression.binary_expressions {
         match binary_expression.operator {
-            ExpressionOperator::Or => {
+            LogicalOrOperator::Or => {
                 let mut clause = asm.new_clause();
 
 		asm.cmp_int(0, Rax);
@@ -30,7 +45,7 @@ pub fn asm(asm: &mut Asm, expression: Expression) {
 
                 asm.start_clause(&mut clause);
                 // e2
-                logical_and_asm(asm, binary_expression.right_expression);
+                logical_and_asm(asm, binary_expression.right_expression, stack_frame);
                 asm.cmp_int(0, Rax);
                 asm.mov_int(0, Rax);
                 asm.setne(Al);
@@ -41,9 +56,9 @@ pub fn asm(asm: &mut Asm, expression: Expression) {
     }
 }
 
-fn logical_and_asm(asm: &mut Asm, expression: LogicalAndExpression) {
+fn logical_and_asm(asm: &mut Asm, expression: LogicalAndExpression, stack_frame: &StackFrame) {
     // e1
-    equality_asm(asm, expression.expression);
+    equality_asm(asm, expression.expression, stack_frame);
 
     for binary_expression in expression.binary_expressions {
         match binary_expression.operator {
@@ -56,7 +71,7 @@ fn logical_and_asm(asm: &mut Asm, expression: LogicalAndExpression) {
 
                 asm.start_clause(&mut clause);
                 // e2
-                equality_asm(asm, binary_expression.right_expression);
+                equality_asm(asm, binary_expression.right_expression, stack_frame);
                 asm.cmp_int(0, Rax);
                 asm.mov_int(0, Rax);
                 asm.setne(Al);
@@ -67,12 +82,12 @@ fn logical_and_asm(asm: &mut Asm, expression: LogicalAndExpression) {
     }
 }
 
-fn equality_asm(asm: &mut Asm, expression: EqualityExpression) {
-    relational_asm(asm, expression.expression);
+fn equality_asm(asm: &mut Asm, expression: EqualityExpression, stack_frame: &StackFrame) {
+    relational_asm(asm, expression.expression, stack_frame);
 
     for binary_expression in expression.binary_expressions {
         asm.push(Rax);
-        relational_asm(asm, binary_expression.right_expression);
+        relational_asm(asm, binary_expression.right_expression, stack_frame);
         asm.pop(Rcx);
         asm.cmp(Rax, Rcx);
         asm.mov_int(0, Rax);
@@ -88,12 +103,12 @@ fn equality_asm(asm: &mut Asm, expression: EqualityExpression) {
     }
 }
 
-fn relational_asm(asm: &mut Asm, expression: RelationalExpression) {
-    additive_asm(asm, expression.expression);
+fn relational_asm(asm: &mut Asm, expression: RelationalExpression, stack_frame: &StackFrame) {
+    additive_asm(asm, expression.expression, stack_frame);
 
     for binary_expression in expression.binary_expressions {
         asm.push(Rax);
-        additive_asm(asm, binary_expression.right_expression);
+        additive_asm(asm, binary_expression.right_expression, stack_frame);
         asm.pop(Rcx);
         asm.cmp(Rax, Rcx);
         asm.mov_int(0, Rax);
@@ -115,12 +130,12 @@ fn relational_asm(asm: &mut Asm, expression: RelationalExpression) {
     }
 }
 
-fn additive_asm(asm: &mut Asm, expression: AdditiveExpression) {
-    term::asm(asm, expression.term);
+fn additive_asm(asm: &mut Asm, expression: AdditiveExpression, stack_frame: &StackFrame) {
+    term::asm(asm, expression.term, stack_frame);
 
     for binary_term in expression.binary_terms {
         asm.push(Rax);
-        term::asm(asm, binary_term.right_term);
+        term::asm(asm, binary_term.right_term, stack_frame);
         asm.pop(Rcx);
 
         match binary_term.operator {
@@ -133,4 +148,14 @@ fn additive_asm(asm: &mut Asm, expression: AdditiveExpression) {
             },
         }
     }
+}
+
+fn assignment_asm(asm: &mut Asm, assignment: Box<Assignment>, stack_frame: &StackFrame) {
+    let offset = stack_frame.vars.get(&assignment.var.name)
+        .expect(&format!(
+            "Var '{}' has not been declared",
+            &assignment.var.name,
+        ));
+    generator::expression::asm(asm, assignment.expression, stack_frame);
+    asm.mov(Rax, RbpOffset(*offset));
 }

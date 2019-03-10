@@ -5,9 +5,10 @@ use parser::factor;
 
 #[derive(Debug, Clone)]
 pub enum Factor {
-    Constant(i64),
+    Expression(Box<Expression>),
     UnaryOperation(Box<UnaryOperation>),
-    Expression(Box<Expression>)
+    Constant(i64),
+    Identifier(String),
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +58,13 @@ pub fn parse(tokens: Vec<Token>) -> Result<(Factor, Vec<Token>), &'static str> {
         Err(_) => (),
     }
 
+    match parse_identifier(tokens.clone()) {
+        Ok((name, leftover_tokens)) => {
+            return Ok((Factor::Identifier(name), leftover_tokens))
+        },
+        Err(_) => (),
+    }
+
     return Err("Invalid factor")
 }
 
@@ -95,6 +103,13 @@ fn parse_integer_literal(tokens: Vec<Token>) -> Result<(i64, Vec<Token>), &'stat
     match tokens[0] {
         Token::IntegerLiteral(value) => return Ok((value, tokens[1..].to_vec())),
         _ => return Err("Expecting integer literal"),
+    }
+}
+
+fn parse_identifier(tokens: Vec<Token>) -> Result<(String, Vec<Token>), &'static str> {
+    match tokens[0] {
+        Token::Identifier(ref name) => return Ok((name.clone(), tokens[1..].to_vec())),
+        _ => return Err("Expecting identifier"),
     }
 }
 

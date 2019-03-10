@@ -4,6 +4,9 @@ pub enum Register {
     Rax,
     Rcx,
     Rdx,
+    Rbp,
+    RbpOffset(i64),
+    Rsp,
     Al,
 }
 
@@ -13,7 +16,10 @@ impl fmt::Display for Register {
             Register::Rax => write!(f, "%rax"),
             Register::Rcx => write!(f, "%rcx"),
             Register::Rdx => write!(f, "%rdx"),
+            Register::Rbp => write!(f, "%rbp"),
+            Register::Rsp => write!(f, "%rsp"),
             Register::Al => write!(f, "%al"),
+            Register::RbpOffset(offset) => write!(f, "{}(%rbp)", offset),
         }
     }
 }
@@ -58,6 +64,17 @@ impl Asm {
         self.source.push_str(
             &format!("_{}:\n", name)
         );
+        // Function prologue (new stack frame)
+        self.push(Register::Rbp);
+        self.mov(Register::Rsp, Register::Rbp);
+    }
+
+    pub fn function_return(&mut self) {
+        // Function epilogue (clear stack frame)
+        self.mov(Register::Rbp, Register::Rsp);
+        self.pop(Register::Rbp);
+        // Return
+        self.ret();
     }
 
     pub fn mov_int(&mut self, int: i64, dest: Register) {
