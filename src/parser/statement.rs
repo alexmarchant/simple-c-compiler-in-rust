@@ -22,21 +22,21 @@ pub fn parse(
     stack_frame: &mut StackFrame,
 ) -> Result<(Statement, Vec<Token>), String> {
 
-    match parse_return(tokens.clone()) {
+    match parse_return(tokens.clone(), stack_frame) {
         Ok((expression, leftover_tokens)) => {
             return Ok((Statement::Return(expression), leftover_tokens))
         },
         Err(_) => (),
     }
 
-    match parse_expression(tokens.clone()) {
+    match parse_expression(tokens.clone(), stack_frame) {
         Ok((expression, leftover_tokens)) => {
             return Ok((Statement::Expression(expression), leftover_tokens))
         },
         Err(_) => (),
     }
 
-    match parse_variable_declaration(tokens.clone()) {
+    match parse_variable_declaration(tokens.clone(), stack_frame) {
         Ok((declaration, leftover_tokens)) => {
             match stack_frame.vars.get(&declaration.var.name) {
                 Some(_) => {
@@ -57,13 +57,19 @@ pub fn parse(
     return Err("Invalid statement".to_string());
 }
 
-fn parse_return(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), String> {
+fn parse_return(
+    tokens: Vec<Token>,
+    stack_frame: &StackFrame,
+) -> Result<(Expression, Vec<Token>), String> {
     match tokens.get(0) {
         Some(Token::KeywordReturn) => (),
         _ => return Err("Expecting 'return'".to_string()),
     }
 
-    let (expression, leftover_tokens) = expression::parse(tokens[1..].to_vec())?;
+    let (expression, leftover_tokens) = expression::parse(
+        tokens[1..].to_vec(),
+        stack_frame,
+    )?;
 
     match leftover_tokens.get(0) {
         Some(Token::Semicolon) => {},
@@ -73,8 +79,8 @@ fn parse_return(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), String> 
     return Ok((expression, leftover_tokens[1..].to_vec()));
 }
 
-fn parse_expression(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), String> {
-    let (expression, leftover_tokens) = expression::parse(tokens)?;
+fn parse_expression(tokens: Vec<Token>, stack_frame: &StackFrame) -> Result<(Expression, Vec<Token>), String> {
+    let (expression, leftover_tokens) = expression::parse(tokens, stack_frame)?;
 
     match leftover_tokens.get(0) {
         Some(Token::Semicolon) => {},
@@ -84,7 +90,7 @@ fn parse_expression(tokens: Vec<Token>) -> Result<(Expression, Vec<Token>), Stri
     return Ok((expression, leftover_tokens[1..].to_vec()));
 }
 
-fn parse_variable_declaration(tokens: Vec<Token>) -> Result<(VariableDeclaration, Vec<Token>), String> {
+fn parse_variable_declaration(tokens: Vec<Token>, stack_frame: &StackFrame) -> Result<(VariableDeclaration, Vec<Token>), String> {
     let var: Var;
     let mut expression: Option<Expression> = None;
 
@@ -103,7 +109,7 @@ fn parse_variable_declaration(tokens: Vec<Token>) -> Result<(VariableDeclaration
     let leftover_tokens: Vec<Token>;
     match tokens.get(2) {
         Some(Token::Assignment) => {
-            let (parsed_expression, tokens) = expression::parse(tokens[3..].to_vec())?;
+            let (parsed_expression, tokens) = expression::parse(tokens[3..].to_vec(), stack_frame)?;
             expression = Some(parsed_expression);
             leftover_tokens = tokens;
         },
