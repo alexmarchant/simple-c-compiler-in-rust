@@ -19,9 +19,9 @@ pub fn asm(asm: &mut Asm, statement: Statement, stack_frame: &StackFrame) {
                     expression,
                     stack_frame,
                 ),
-                None => asm.mov_int(0, Rax),
+                None => asm.mov(&0, &Rax),
             }
-            asm.push(Rax);
+            asm.push(&Rax);
         },
     }
 }

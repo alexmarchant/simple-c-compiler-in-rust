@@ -5,7 +5,6 @@ pub enum Register {
     Rcx,
     Rdx,
     Rbp,
-    RbpOffset(i64),
     Rsp,
     Al,
 }
@@ -19,8 +18,18 @@ impl fmt::Display for Register {
             Register::Rbp => write!(f, "%rbp"),
             Register::Rsp => write!(f, "%rsp"),
             Register::Al => write!(f, "%al"),
-            Register::RbpOffset(offset) => write!(f, "{}(%rbp)", offset),
         }
+    }
+}
+
+pub struct RegisterOffset {
+    pub register: Register,
+    pub offset: i64,
+}
+
+impl fmt::Display for RegisterOffset {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}({})", self.offset, self.register)
     }
 }
 
@@ -65,37 +74,31 @@ impl Asm {
             &format!("_{}:\n", name)
         );
         // Function prologue (new stack frame)
-        self.push(Register::Rbp);
-        self.mov(Register::Rsp, Register::Rbp);
+        self.push(&Register::Rbp);
+        self.mov(&Register::Rsp, &Register::Rbp);
     }
 
     pub fn function_return(&mut self) {
         // Function epilogue (clear stack frame)
-        self.mov(Register::Rbp, Register::Rsp);
-        self.pop(Register::Rbp);
+        self.mov(&Register::Rbp, &Register::Rsp);
+        self.pop(&Register::Rbp);
         // Return
         self.ret();
     }
 
-    pub fn mov_int(&mut self, int: i64, dest: Register) {
-        self.source.push_str(
-            &format!("\tmov\t${}, {}\n", int, dest)
-        );
-    }
-
-    pub fn mov(&mut self, src: Register, dest: Register) {
+    pub fn mov(&mut self, src: &fmt::Display, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tmov\t{}, {}\n", src, dest)
         );
     }
 
-    pub fn push(&mut self, src: Register) {
+    pub fn push(&mut self, src: &fmt::Display) {
         self.source.push_str(
             &format!("\tpush\t{}\n", src)
         );
     }
 
-    pub fn pop(&mut self, src: Register) {
+    pub fn pop(&mut self, src: &fmt::Display) {
         self.source.push_str(
             &format!("\tpop\t{}\n", src)
         );
@@ -107,85 +110,79 @@ impl Asm {
         );
     }
 
-    pub fn add(&mut self, src: Register, dest: Register) {
+    pub fn add(&mut self, src: &fmt::Display, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tadd\t{}, {}\n", src, dest)
         );
     }
 
-    pub fn sub(&mut self, src: Register, dest: Register) {
+    pub fn sub(&mut self, src: &fmt::Display, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsub\t{}, {}\n", src, dest)
         );
     }
 
-    pub fn imul(&mut self, src: Register, dest: Register) {
+    pub fn imul(&mut self, src: &fmt::Display, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\timul\t{}, {}\n", src, dest)
         );
     }
 
-    pub fn idiv(&mut self, src: Register) {
+    pub fn idiv(&mut self, src: &fmt::Display) {
         self.source.push_str(
             &format!("\tidiv\t{}\n", src)
         );
     }
 
-    pub fn neg(&mut self, src: Register) {
+    pub fn neg(&mut self, src: &fmt::Display) {
         self.source.push_str(
             &format!("\tneg\t{}\n", src)
         );
     }
 
-    pub fn cmp(&mut self, src_a: Register, src_b: Register) {
+    pub fn cmp(&mut self, src_a: &fmt::Display, src_b: &fmt::Display) {
         self.source.push_str(
             &format!("\tcmp\t{}, {}\n", src_a, src_b)
         );
     }
 
-    pub fn cmp_int(&mut self, int: i64, src: Register) {
-        self.source.push_str(
-            &format!("\tcmp\t${}, {}\n", int, src)
-        );
-    }
-
-    pub fn sete(&mut self, dest: Register) {
+    pub fn sete(&mut self, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsete\t{}\n", dest)
         );
     }
 
-    pub fn setne(&mut self, dest: Register) {
+    pub fn setne(&mut self, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsetne\t{}\n", dest)
         );
     }
 
-    pub fn setl(&mut self, dest: Register) {
+    pub fn setl(&mut self, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsetl\t{}\n", dest)
         );
     }
 
-    pub fn setle(&mut self, dest: Register) {
+    pub fn setle(&mut self, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsetle\t{}\n", dest)
         );
     }
 
-    pub fn setg(&mut self, dest: Register) {
+    pub fn setg(&mut self, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsetg\t{}\n", dest)
         );
     }
 
-    pub fn setge(&mut self, dest: Register) {
+    pub fn setge(&mut self, dest: &fmt::Display) {
         self.source.push_str(
             &format!("\tsetge\t{}\n", dest)
         );
     }
 
-    pub fn not(&mut self, src: Register) {
+    pub fn not(&mut self, src: &fmt::Display) {
         self.source.push_str(
             &format!("\tnot\t{}\n", src)
         );

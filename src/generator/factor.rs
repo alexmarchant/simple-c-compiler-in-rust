@@ -1,5 +1,6 @@
 use asm::Asm;
-use asm::Register::{Rax, Al, RbpOffset};
+use asm::Register::{Rax, Al, Rbp};
+use asm::RegisterOffset;
 use generator::factor;
 use parser::StackFrame;
 use generator::expression;
@@ -16,7 +17,7 @@ pub fn asm(asm: &mut Asm, factor: Factor, stack_frame: &StackFrame) {
             unary_operation_asm(asm, *operation, stack_frame);
         },
         Factor::Constant(value) => {
-            asm.mov_int(value, Rax);
+            asm.mov(&value, &Rax);
         },
         Factor::Identifier(name) => {
             let offset = stack_frame.vars.get(&name)
@@ -24,7 +25,11 @@ pub fn asm(asm: &mut Asm, factor: Factor, stack_frame: &StackFrame) {
                     "Var '{}' has not been declared",
                     name,
                 ));
-            asm.mov(RbpOffset(*offset), Rax);
+            let reg_offset = RegisterOffset {
+                offset: *offset,
+                register: Rbp,
+            };
+            asm.mov(&reg_offset, &Rax);
         },
     }
 }
@@ -34,15 +39,15 @@ pub fn unary_operation_asm(asm: &mut Asm, operation: UnaryOperation, stack_frame
 
     match operation.operator {
         UnaryOperator::Negation => {
-            asm.neg(Rax);
+            asm.neg(&Rax);
         },
         UnaryOperator::LogicalNegation => {
-            asm.cmp_int(0, Rax);
-            asm.mov_int(0, Rax);
-            asm.sete(Al);
+            asm.cmp(&0, &Rax);
+            asm.mov(&0, &Rax);
+            asm.sete(&Al);
         },
         UnaryOperator::BitwiseComplement => {
-            asm.not(Rax);
+            asm.not(&Rax);
         },
     }
 }

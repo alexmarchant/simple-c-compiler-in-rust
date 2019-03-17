@@ -18,7 +18,7 @@ pub fn asm(asm: &mut Asm, function: Function) {
 
     // Return 0 if no return statement
     if !has_return {
-        asm.mov_int(0, Rax);
+        asm.mov(&0, &Rax);
     }
 
     asm.function_return();
